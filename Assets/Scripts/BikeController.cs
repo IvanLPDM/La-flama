@@ -10,6 +10,8 @@ public class BikeController : MonoBehaviour
     public float acceleration = 5f; 
     public float maxSpeed = 10f;
     private float sentido = 0f;
+    public bool ground;
+    public GameObject rayCast;
 
     [SerializeField]
     [Header("Inclinación")]
@@ -43,60 +45,81 @@ public class BikeController : MonoBehaviour
 
         if (inclinacion) 
         {
-            Debug.Log("DERRAPA");
-            if (Input.GetKey(KeyCode.W))
+            if(ground)
             {
-                if (sentido < -1 || sentido > 1)
+                if (Input.GetKey(KeyCode.W))
                 {
-                    if (sentido > 10 || sentido < -10)
+                    if (sentido < -1 || sentido > 1)
                     {
-                        acceleration = acceleration_turning;
-                    }
-                    else if (sentido > 5 || sentido < -5)
-                    {
-                        acceleration = acceleration_turning;
+                        if (sentido > 10 || sentido < -10)
+                        {
+                            acceleration = acceleration_turning;
+                        }
+                        else if (sentido > 5 || sentido < -5)
+                        {
+                            acceleration = acceleration_turning;
+                        }
+                        else
+                            acceleration = 20f;
+
+                        direction = new Vector3(sentido * 0.1f, transform.forward.y, transform.forward.z);
                     }
                     else
-                        acceleration = 20f;
+                        direction = transform.forward;
 
-                    direction = new Vector3(sentido * 0.1f, transform.forward.y, transform.forward.z);
+                    rb.AddForce(direction * acceleration, ForceMode.Acceleration);
                 }
-                else
-                    direction = transform.forward;
 
-                rb.AddForce(direction * acceleration, ForceMode.Acceleration);
-            }
-
-            //Visuals
-            if (Input.GetKey(KeyCode.A) && sentido > -10)
-            {
-                cicle.transform.Rotate(new Vector3(0, 0, 1), incline_Speed * Time.fixedDeltaTime);
-                sentido += -1f;
-
-            }
-            else if (Input.GetKey(KeyCode.D) && sentido < 10)
-            {
-                cicle.transform.Rotate(new Vector3(0, 0, 1), -incline_Speed * Time.fixedDeltaTime);
-                sentido += 1f;
-
-            }
-            else if(!Input.GetKey(KeyCode.A) && !Input.GetKey(KeyCode.D))
-            {
-                if (sentido > 0)
+                //Visuals
+                if (Input.GetKey(KeyCode.A) && sentido > -10)
                 {
-                    cicle.transform.Rotate(new Vector3(0, 0, 1), +incline_Speed * Time.fixedDeltaTime);
-                    sentido -= 1f;
+                    cicle.transform.Rotate(new Vector3(0, 0, 1), incline_Speed * Time.fixedDeltaTime);
+                    sentido += -1f;
+
                 }
-                else if (sentido < 0)
+                else if (Input.GetKey(KeyCode.D) && sentido < 10)
                 {
                     cicle.transform.Rotate(new Vector3(0, 0, 1), -incline_Speed * Time.fixedDeltaTime);
                     sentido += 1f;
+
+                }
+                else if (!Input.GetKey(KeyCode.A) && !Input.GetKey(KeyCode.D))
+                {
+                    if (sentido > 0)
+                    {
+                        cicle.transform.Rotate(new Vector3(0, 0, 1), +incline_Speed * Time.fixedDeltaTime);
+                        sentido -= 1f;
+                    }
+                    else if (sentido < 0)
+                    {
+                        cicle.transform.Rotate(new Vector3(0, 0, 1), -incline_Speed * Time.fixedDeltaTime);
+                        sentido += 1f;
+                    }
                 }
             }
+            else //En el aire-----------------------------------
+            {
+                if (sentido > 10 || sentido < -10)
+                {
+                    cicle.transform.rotation *= Quaternion.Euler(0, sentido * 0.1f, 0);
+                    acceleration = acceleration_turning;
+                }
+                else
+                    acceleration = 20f;
+
+                rb.AddForce(transform.forward * acceleration, ForceMode.Acceleration);
+
+                //Visuals
+                rotarVolante();
+            }
+
+            
 
         }
         else
         {
+            if(ground)
+            {
                 if (Input.GetKey(KeyCode.W))
                 {
                     if (rb.velocity.magnitude < maxSpeed)
@@ -117,35 +140,11 @@ public class BikeController : MonoBehaviour
                         rb.AddForce(transform.forward * acceleration, ForceMode.Acceleration);
                     }
                 }
-
-
+            }
 
 
             //Visuals
-            if (Input.GetKey(KeyCode.A) && sentido > -10)
-            {
-                manillar.transform.Rotate(new Vector3(1, 0, 0), turnSpeed * Time.fixedDeltaTime);
-                sentido += -1f;
-
-            }
-            else if (Input.GetKey(KeyCode.D) && sentido < 10)
-            {
-                manillar.transform.Rotate(new Vector3(1, 0, 0), -turnSpeed * Time.fixedDeltaTime);
-                sentido += 1f;
-            }
-            else if (!Input.GetKey(KeyCode.A) && !Input.GetKey(KeyCode.D))
-            {
-                if (sentido > 0)
-                {
-                    manillar.transform.Rotate(new Vector3(1, 0, 0), +turnSpeed * Time.fixedDeltaTime);
-                    sentido -= 1f;
-                }
-                else if (sentido < 0)
-                {
-                    manillar.transform.Rotate(new Vector3(1, 0, 0), -turnSpeed * Time.fixedDeltaTime);
-                    sentido += 1f;
-                }
-            }
+            rotarVolante();
 
 
             sentido = Mathf.Clamp(sentido, -10, 10);
@@ -157,12 +156,57 @@ public class BikeController : MonoBehaviour
         pendiente = CalcularPendiente();
         rb.AddForce(transform.forward * pendiente * 10, ForceMode.Acceleration);
 
+
+        //Ground
+        ground = false;
+
+        if (Physics.Raycast(rayCast.transform.position, Vector3.down, out RaycastHit hit, 1.5f))
+        {
+            if (hit.collider.CompareTag("ground"))
+            {
+                ground = true;
+            }
+        }
+    }
+
+    void rotarVolante()
+    {
+        if (Input.GetKey(KeyCode.A) && sentido > -10)
+        {
+            manillar.transform.Rotate(new Vector3(1, 0, 0), turnSpeed * Time.fixedDeltaTime);
+            sentido += -1f;
+
+        }
+        else if (Input.GetKey(KeyCode.D) && sentido < 10)
+        {
+            manillar.transform.Rotate(new Vector3(1, 0, 0), -turnSpeed * Time.fixedDeltaTime);
+            sentido += 1f;
+        }
+        else if (!Input.GetKey(KeyCode.A) && !Input.GetKey(KeyCode.D))
+        {
+            if (sentido > 0)
+            {
+                manillar.transform.Rotate(new Vector3(1, 0, 0), +turnSpeed * Time.fixedDeltaTime);
+                sentido -= 1f;
+            }
+            else if (sentido < 0)
+            {
+                manillar.transform.Rotate(new Vector3(1, 0, 0), -turnSpeed * Time.fixedDeltaTime);
+                sentido += 1f;
+            }
+        }
+    }
+
+    void inclinarse()
+    {
+
     }
 
     float CalcularPendiente()
     {
         return B1.transform.position.y - B2.transform.position.y;
     }
+
 
     //void FixedUpdate()
     //{
