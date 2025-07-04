@@ -55,7 +55,7 @@ public class BikeController : MonoBehaviour
             inclinacion = false;
         }
 
-        if (Input.GetKey(KeyCode.JoystickButton1))
+        if(Input.GetKey(KeyCode.JoystickButton1))
             Debug.Log("ACELERAA");
 
         if (inclinacion) 
@@ -212,11 +212,11 @@ public class BikeController : MonoBehaviour
     {
         if (Input.GetKey(KeyCode.W))
         {
-            cicle.transform.Rotate(new Vector3(1, 0, 0), incline_Speed * 2 * Time.fixedDeltaTime);
+            cicle.transform.Rotate(new Vector3(1, 0, 0), incline_Speed * Time.fixedDeltaTime);
         }
         if (Input.GetKey(KeyCode.S))
         {
-            cicle.transform.Rotate(new Vector3(1, 0, 0), -incline_Speed* 2 * Time.fixedDeltaTime);
+            cicle.transform.Rotate(new Vector3(1, 0, 0), -incline_Speed * Time.fixedDeltaTime);
         }
     }
 
