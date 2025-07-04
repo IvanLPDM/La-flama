@@ -9,7 +9,7 @@ public class BikeController : MonoBehaviour
     [Header("Movimiento")]
     public float acceleration = 5f; 
     public float maxSpeed = 10f;
-    private float sentido = 0f;
+    public float sentido = 0f;
     public bool ground;
     public GameObject rayCast;
 
@@ -22,6 +22,7 @@ public class BikeController : MonoBehaviour
 
     [SerializeField]
     [Header("Manillar")]
+    public float sentido_rueda = 0f;
     public GameObject manillar;
     public float turnSpeed = 50f;
     public float acceleration_turning;
@@ -42,30 +43,35 @@ public class BikeController : MonoBehaviour
     void FixedUpdate()
     {
         
+        if (rb.velocity.magnitude <= 20)
+        {
+            inclinacion = false;
+        }
+        else if(!Input.GetKey(KeyCode.Space))
+            inclinacion = true;
+
+        if (Input.GetKey(KeyCode.Space))
+        {
+            inclinacion = false;
+        }
+
+        if (Input.GetKey(KeyCode.JoystickButton1))
+            Debug.Log("ACELERAA");
 
         if (inclinacion) 
         {
             if(ground)
             {
-                if (Input.GetKey(KeyCode.W))
+                if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.JoystickButton1))
                 {
-                    if (sentido < -1 || sentido > 1)
-                    {
-                        if (sentido > 10 || sentido < -10)
-                        {
-                            acceleration = acceleration_turning;
-                        }
-                        else if (sentido > 5 || sentido < -5)
-                        {
-                            acceleration = acceleration_turning;
-                        }
-                        else
-                            acceleration = 20f;
-
-                        direction = new Vector3(sentido * 0.1f, transform.forward.y, transform.forward.z);
-                    }
+                    if (Mathf.Abs(sentido) > 5)
+                        acceleration = acceleration_turning;
                     else
-                        direction = transform.forward;
+                        acceleration = 20f;
+
+                    // Crear dirección girando el forward de la bici con un pequeño ángulo proporcional a "sentido"
+                    Quaternion giro = Quaternion.Euler(0f, sentido * 3f, 0f); // 0.5f es sensibilidad de giro
+                    direction = giro * transform.forward;
 
                     rb.AddForce(direction * acceleration, ForceMode.Acceleration);
                 }
@@ -96,23 +102,34 @@ public class BikeController : MonoBehaviour
                         sentido += 1f;
                     }
                 }
+
+                //Volver a su sitio la rueda
+                if (sentido_rueda > 0)
+                {
+                    manillar.transform.Rotate(new Vector3(1, 0, 0), +turnSpeed * Time.fixedDeltaTime);
+                    sentido_rueda -= 1f;
+                }
+                else if (sentido_rueda < 0)
+                {
+                    manillar.transform.Rotate(new Vector3(1, 0, 0), -turnSpeed * Time.fixedDeltaTime);
+                    sentido_rueda += 1f;
+                }
             }
             else //En el aire-----------------------------------
             {
-                if (sentido > 10 || sentido < -10)
+                if (sentido_rueda > 1 || sentido_rueda < -1)
                 {
-                    cicle.transform.rotation *= Quaternion.Euler(0, sentido * 0.1f, 0);
+                    cicle.transform.rotation *= Quaternion.Euler(0, sentido_rueda * 0.1f, 0);
                     acceleration = acceleration_turning;
                 }
-                else
-                    acceleration = 20f;
 
-                rb.AddForce(transform.forward * acceleration, ForceMode.Acceleration);
+                equilibrarAire();
 
                 //Visuals
                 rotarVolante();
             }
 
+            
             
 
         }
@@ -120,25 +137,19 @@ public class BikeController : MonoBehaviour
         {
             if(ground)
             {
-                if (Input.GetKey(KeyCode.W))
+                if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.JoystickButton1))
                 {
-                    if (rb.velocity.magnitude < maxSpeed)
-                    {
-                        if (sentido > 10 || sentido < -10)
+
+
+                        if (sentido_rueda > 5 || sentido_rueda < -5)
                         {
-                            cicle.transform.rotation *= Quaternion.Euler(0, sentido * 0.8f, 0);
+                            cicle.transform.rotation *= Quaternion.Euler(0, sentido_rueda * 0.2f, 0);
                             acceleration = acceleration_turning;
                         }
-                        else if (sentido > 5 || sentido < -5)
-                        {
-                            cicle.transform.rotation *= Quaternion.Euler(0, sentido * 0.2f, 0);
-                            acceleration = acceleration_turning;
-                        }
-                        else
-                            acceleration = 20f;
+
 
                         rb.AddForce(transform.forward * acceleration, ForceMode.Acceleration);
-                    }
+                    
                 }
             }
 
@@ -146,8 +157,19 @@ public class BikeController : MonoBehaviour
             //Visuals
             rotarVolante();
 
+            if (sentido > 0)
+            {
+                cicle.transform.Rotate(new Vector3(0, 0, 1), +incline_Speed * Time.fixedDeltaTime);
+                sentido -= 1f;
+            }
+            else if (sentido < 0)
+            {
+                cicle.transform.Rotate(new Vector3(0, 0, 1), -incline_Speed * Time.fixedDeltaTime);
+                sentido += 1f;
+            }
 
             sentido = Mathf.Clamp(sentido, -10, 10);
+            sentido_rueda = Mathf.Clamp(sentido_rueda, -10, 10);
             }
 
 
@@ -167,35 +189,70 @@ public class BikeController : MonoBehaviour
                 ground = true;
             }
         }
+        
+        //Corregir cuando se tuerce
+        if (sentido == 0 && Mathf.Abs(cicle.transform.localEulerAngles.z) > 0.1f)
+        {
+            Quaternion targetRotation = Quaternion.Euler(
+                cicle.transform.localEulerAngles.x,
+                cicle.transform.localEulerAngles.y,
+                0f
+            );
+
+            cicle.transform.localRotation = Quaternion.RotateTowards(
+                cicle.transform.localRotation,
+                targetRotation,
+                incline_Speed * Time.fixedDeltaTime
+            );
+        }
+
+    }
+
+    void equilibrarAire()
+    {
+        if (Input.GetKey(KeyCode.W))
+        {
+            cicle.transform.Rotate(new Vector3(1, 0, 0), incline_Speed * 2 * Time.fixedDeltaTime);
+        }
+        if (Input.GetKey(KeyCode.S))
+        {
+            cicle.transform.Rotate(new Vector3(1, 0, 0), -incline_Speed* 2 * Time.fixedDeltaTime);
+        }
     }
 
     void rotarVolante()
     {
-        if (Input.GetKey(KeyCode.A) && sentido > -10)
+        if (Input.GetKey(KeyCode.A) && sentido_rueda > -10)
         {
             manillar.transform.Rotate(new Vector3(1, 0, 0), turnSpeed * Time.fixedDeltaTime);
-            sentido += -1f;
+            sentido_rueda += -1f;
 
         }
-        else if (Input.GetKey(KeyCode.D) && sentido < 10)
+        else if (Input.GetKey(KeyCode.D) && sentido_rueda < 10)
         {
             manillar.transform.Rotate(new Vector3(1, 0, 0), -turnSpeed * Time.fixedDeltaTime);
-            sentido += 1f;
+            sentido_rueda += 1f;
         }
         else if (!Input.GetKey(KeyCode.A) && !Input.GetKey(KeyCode.D))
         {
-            if (sentido > 0)
+            if (sentido_rueda > 0)
             {
                 manillar.transform.Rotate(new Vector3(1, 0, 0), +turnSpeed * Time.fixedDeltaTime);
-                sentido -= 1f;
+                sentido_rueda -= 1f;
             }
-            else if (sentido < 0)
+            else if (sentido_rueda < 0)
             {
                 manillar.transform.Rotate(new Vector3(1, 0, 0), -turnSpeed * Time.fixedDeltaTime);
-                sentido += 1f;
+                sentido_rueda += 1f;
             }
         }
+
+
+            
+        
     }
+
+   
 
     void inclinarse()
     {
@@ -206,54 +263,6 @@ public class BikeController : MonoBehaviour
     {
         return B1.transform.position.y - B2.transform.position.y;
     }
-
-
-    //void FixedUpdate()
-    //{
-    //    if (Input.GetKey(KeyCode.W))
-    //    {
-    //        if (rb.velocity.magnitude < maxSpeed)
-    //        {
-    //            if (sentido > 10 || sentido < -10)
-    //            {
-    //                cicle.transform.rotation *= Quaternion.Euler(0, sentido * 0.8f, 0);
-    //                acceleration = acceleration_turning;
-    //            }
-    //            else if (sentido > 5 || sentido < -5)
-    //            { 
-    //                cicle.transform.rotation *= Quaternion.Euler(0, sentido * 0.2f, 0);
-    //                acceleration = acceleration_turning;
-    //            }
-
-    //            else
-    //                acceleration = 20f;
-
-    //            rb.AddForce(transform.forward * acceleration, ForceMode.Acceleration);
-    //        }
-    //    }
-
-
-
-
-    //    //Visuals
-    //    if (Input.GetKey(KeyCode.A) && sentido > -10)
-    //    {
-    //        manillar.transform.Rotate(new Vector3(1, 0 ,0), turnSpeed * Time.fixedDeltaTime);
-    //        sentido += -1f;
-
-    //    }
-    //    else if (Input.GetKey(KeyCode.D) && sentido < 10)
-    //    {
-    //        manillar.transform.Rotate(new Vector3(1, 0, 0), -turnSpeed * Time.fixedDeltaTime);
-    //        sentido += 1f;
-
-    //    }
-
-
-    //    sentido = Mathf.Clamp(sentido, -10, 10);
-    //}
-
-
 }
 
 
