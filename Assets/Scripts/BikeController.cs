@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class BikeController : MonoBehaviour
 {
@@ -33,6 +34,10 @@ public class BikeController : MonoBehaviour
     public Transform B2;
     public float pendiente;
 
+    private float horizontalInput;
+    private float verticalInput;
+    private float r2Value;
+
     public Rigidbody rb;
 
     void Start()
@@ -42,27 +47,28 @@ public class BikeController : MonoBehaviour
 
     void FixedUpdate()
     {
-        
+        horizontalInput = Gamepad.current.leftStick.x.ReadValue();
+        verticalInput = Gamepad.current.leftStick.y.ReadValue();
+        r2Value = Gamepad.current.rightTrigger.ReadValue();
+
         if (rb.velocity.magnitude <= 20)
         {
             inclinacion = false;
         }
-        else if(!Input.GetKey(KeyCode.Space))
+        else if(!Input.GetKey(KeyCode.Space) || r2Value <= 0)
             inclinacion = true;
 
-        if (Input.GetKey(KeyCode.Space))
+        if (Input.GetKey(KeyCode.Space) || r2Value > 0)
         {
             inclinacion = false;
         }
 
-        if(Input.GetKey(KeyCode.JoystickButton1))
-            Debug.Log("ACELERAA");
 
         if (inclinacion) 
         {
             if(ground)
             {
-                if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.JoystickButton1))
+                if (Gamepad.current.buttonEast.isPressed || Input.GetKey(KeyCode.W))
                 {
                     if (Mathf.Abs(sentido) > 5)
                         acceleration = acceleration_turning;
@@ -77,30 +83,38 @@ public class BikeController : MonoBehaviour
                 }
 
                 //Visuals
-                if (Input.GetKey(KeyCode.A) && sentido > -10)
+                if ((Input.GetKey(KeyCode.A) || horizontalInput < 0) && sentido > -10)
                 {
                     cicle.transform.Rotate(new Vector3(0, 0, 1), incline_Speed * Time.fixedDeltaTime);
                     sentido += -1f;
 
                 }
-                else if (Input.GetKey(KeyCode.D) && sentido < 10)
+                else if ((Input.GetKey(KeyCode.D) || horizontalInput > 0) && sentido < 10)
                 {
                     cicle.transform.Rotate(new Vector3(0, 0, 1), -incline_Speed * Time.fixedDeltaTime);
                     sentido += 1f;
 
                 }
-                else if (!Input.GetKey(KeyCode.A) && !Input.GetKey(KeyCode.D))
+                else if ((!Input.GetKey(KeyCode.A) && horizontalInput >= 0) && !Input.GetKey(KeyCode.D) && horizontalInput <= 0)
                 {
                     if (sentido > 0)
                     {
                         cicle.transform.Rotate(new Vector3(0, 0, 1), +incline_Speed * Time.fixedDeltaTime);
+                        transform.Rotate(0, -1 * Time.fixedDeltaTime, 0);
                         sentido -= 1f;
                     }
                     else if (sentido < 0)
                     {
                         cicle.transform.Rotate(new Vector3(0, 0, 1), -incline_Speed * Time.fixedDeltaTime);
+                        transform.Rotate(0, 1 * Time.fixedDeltaTime, 0);
                         sentido += 1f;
                     }
+                }
+
+                //Girar la bici
+                if (Input.GetKey(KeyCode.D) || horizontalInput > 0 || Input.GetKey(KeyCode.A) || horizontalInput < 0)
+                {
+                    cicle.transform.rotation *= Quaternion.Euler(0, sentido * 0.05f, 0);
                 }
 
                 //Volver a su sitio la rueda
@@ -137,7 +151,7 @@ public class BikeController : MonoBehaviour
         {
             if(ground)
             {
-                if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.JoystickButton1))
+                if (Input.GetKey(KeyCode.W) || Gamepad.current.buttonEast.isPressed)
                 {
 
 
@@ -210,11 +224,11 @@ public class BikeController : MonoBehaviour
 
     void equilibrarAire()
     {
-        if (Input.GetKey(KeyCode.W))
+        if (Input.GetKey(KeyCode.W) || verticalInput > 0)
         {
             cicle.transform.Rotate(new Vector3(1, 0, 0), incline_Speed * Time.fixedDeltaTime);
         }
-        if (Input.GetKey(KeyCode.S))
+        if (Input.GetKey(KeyCode.S) || verticalInput < 0)
         {
             cicle.transform.Rotate(new Vector3(1, 0, 0), -incline_Speed * Time.fixedDeltaTime);
         }
@@ -222,18 +236,18 @@ public class BikeController : MonoBehaviour
 
     void rotarVolante()
     {
-        if (Input.GetKey(KeyCode.A) && sentido_rueda > -10)
+        if ((Input.GetKey(KeyCode.A) || horizontalInput < 0) && sentido_rueda > -10)
         {
             manillar.transform.Rotate(new Vector3(1, 0, 0), turnSpeed * Time.fixedDeltaTime);
             sentido_rueda += -1f;
 
         }
-        else if (Input.GetKey(KeyCode.D) && sentido_rueda < 10)
+        else if ((Input.GetKey(KeyCode.D) || horizontalInput > 0) && sentido_rueda < 10)
         {
             manillar.transform.Rotate(new Vector3(1, 0, 0), -turnSpeed * Time.fixedDeltaTime);
             sentido_rueda += 1f;
         }
-        else if (!Input.GetKey(KeyCode.A) && !Input.GetKey(KeyCode.D))
+        else if ((!Input.GetKey(KeyCode.A) && horizontalInput >= 0) && !Input.GetKey(KeyCode.D) && horizontalInput <= 0)
         {
             if (sentido_rueda > 0)
             {
