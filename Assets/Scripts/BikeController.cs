@@ -128,6 +128,8 @@ public class BikeController : MonoBehaviour
                     manillar.transform.Rotate(new Vector3(1, 0, 0), -turnSpeed * Time.fixedDeltaTime);
                     sentido_rueda += 1f;
                 }
+
+                jump();
             }
             else //En el aire-----------------------------------
             {
@@ -165,6 +167,8 @@ public class BikeController : MonoBehaviour
                         rb.AddForce(transform.forward * acceleration, ForceMode.Acceleration);
                     
                 }
+
+                jump();
             }
 
 
@@ -231,6 +235,15 @@ public class BikeController : MonoBehaviour
         if (Input.GetKey(KeyCode.S) || verticalInput < 0)
         {
             cicle.transform.Rotate(new Vector3(1, 0, 0), -incline_Speed * Time.fixedDeltaTime);
+        }
+    }
+
+    void jump()
+    {
+        if(Gamepad.current.buttonSouth.isPressed)
+        {
+            Debug.Log("JUMP");
+            rb.AddForce(Vector3.up * 100f, ForceMode.Force);
         }
     }
 
