@@ -13,6 +13,7 @@ public class BikeController : MonoBehaviour
     public float sentido = 0f;
     public bool ground;
     public GameObject rayCast;
+    public TrailRenderer trail, trail2;
 
     [SerializeField]
     [Header("Inclinación")]
@@ -33,6 +34,14 @@ public class BikeController : MonoBehaviour
     public Transform B1;
     public Transform B2;
     public float pendiente;
+
+    [SerializeField]
+    [Header("Torch")]
+    public float live;
+    public ParticleSystem Ps, Ps1, Ps2, Ps3;
+    public Light torchLight;
+    public Vector2 sizePs, sizePs2, sizePs3, sizePs1;
+    public float intensityLight;
 
     private float horizontalInput;
     private float verticalInput;
@@ -61,11 +70,21 @@ public class BikeController : MonoBehaviour
         if (Input.GetKey(KeyCode.Space) || r2Value > 0)
         {
             inclinacion = false;
+
+            if(rb.velocity.magnitude >= 20)
+            {
+                RenderTrail();
+            }
+            
         }
 
+        //FUEGO
+        fire_consume(0.5f * Time.deltaTime);
 
         if (inclinacion) 
         {
+            StopRenderingTrail();
+
             if(ground)
             {
                 if (Gamepad.current.buttonEast.isPressed || Input.GetKey(KeyCode.W))
@@ -238,6 +257,30 @@ public class BikeController : MonoBehaviour
         }
     }
 
+    void fire_consume(float cost)
+    {
+        live -= cost;
+        ParticlesUpdate();
+    }
+
+    void ParticlesUpdate()
+    {
+        float porcentaje = live / 80;
+        var main = Ps.main;
+        var main1 = Ps1.main;
+        var main2 = Ps2.main;
+        var main3 = Ps3.main;
+
+            main.startSize = new ParticleSystem.MinMaxCurve(sizePs.x * porcentaje, sizePs.y * porcentaje);
+            main1.startSize = new ParticleSystem.MinMaxCurve(sizePs1.x * porcentaje, sizePs1.y * porcentaje);
+            main2.startSize = new ParticleSystem.MinMaxCurve(sizePs2.x * porcentaje, sizePs2.y * porcentaje);
+            main3.startSize = new ParticleSystem.MinMaxCurve(sizePs3.x * porcentaje, sizePs3.y * porcentaje);
+
+        torchLight.intensity = intensityLight * porcentaje;
+        
+
+    }
+
     void jump()
     {
         if(Gamepad.current.buttonSouth.isPressed)
@@ -245,6 +288,18 @@ public class BikeController : MonoBehaviour
             Debug.Log("JUMP");
             rb.AddForce(Vector3.up * 100f, ForceMode.Force);
         }
+    }
+
+    void RenderTrail()
+    {
+        trail.emitting = true;
+        trail2.emitting = true;
+    }
+
+    void StopRenderingTrail()
+    {
+        trail.emitting = false;
+        trail2.emitting = false;
     }
 
     void rotarVolante()
@@ -279,13 +334,7 @@ public class BikeController : MonoBehaviour
         
     }
 
-   
-
-    void inclinarse()
-    {
-
-    }
-
+  
     float CalcularPendiente()
     {
         return B1.transform.position.y - B2.transform.position.y;
